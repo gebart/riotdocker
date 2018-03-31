@@ -2,131 +2,140 @@
 # RIOT Dockerfile
 #
 # the resulting image will contain everything needed to build RIOT for all
-# supported platforms. This is the largest build image, it takes about 1.5 GB in
-# total.
+# supported platforms.
 #
 # Setup: (only needed once per Dockerfile change)
 # 1. install docker, add yourself to docker group, enable docker, relogin
 # 2. # docker build -t riotbuild .
 #
-# Usage:
-# 3. cd to riot root
+# Suggested usage:
+# 3. cd to RIOT application
+# 4. make BUILD_IN_DOCKER=1
+#
+# Manual usage:
+# 3. cd to RIOT root
 # 4. # docker run -i -t -u $UID -v $(pwd):/data/riotbuild riotbuild ./dist/tools/compile_test/compile_test.py
 
-FROM ubuntu:xenial
+FROM fedora:latest
 
 MAINTAINER Joakim Nohlgård <joakim.nohlgard@eistec.se>
 
-ENV DEBIAN_FRONTEND noninteractive
-
 # The following package groups will be installed:
 # - upgrade all system packages to latest available version
-# - native platform development and build system functionality (about 400 MB installed)
-# - Cortex-M development (about 550 MB installed), through the gcc-arm-embedded PPA
-# - MSP430 development (about 120 MB installed)
-# - AVR development (about 110 MB installed)
-# - LLVM/Clang build environment (about 125 MB installed)
-# - x86 bare metal emulation (about 125 MB installed) (this pulls in all of X11)
-# All apt files will be deleted afterwards to reduce the size of the container image.
+# - native platform development and build system functionality
+# - LLVM/Clang toolchain
+# - ARM bare metal toolchain
+# - MSPGCC toolchain
+# - AVR toolchain
+# - MIPS bare metal toolchain
+# - RISC-V bare metal toolchain
+# All RPM files and other package manager files will be deleted afterwards to
+# reduce the size of the container image.
 # This is all done in a single RUN command to reduce the number of layers and to
 # allow the cleanup to actually save space.
-# Total size without cleaning is approximately 1.525 GB (2016-03-08)
-# After adding the cleanup commands the size is approximately 1.497 GB
-RUN \
-    dpkg --add-architecture i386 >&2 && \
-    echo 'Adding gcc-arm-embedded PPA' >&2 && \
-    echo "deb http://ppa.launchpad.net/team-gcc-arm-embedded/ppa/ubuntu xenial main" \
-     > /etc/apt/sources.list.d/gcc-arm-embedded.list && \
-    apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 \
-    --recv-keys B4D03348F75E3362B1E1C2A1D1FAA6ECF64D33B0 && \
-    echo 'Upgrading all system packages to the latest available versions' >&2 && \
-    apt-get update && apt-get -y dist-upgrade \
-    && echo 'Installing native toolchain and build system functionality' >&2 && \
-    apt-get -y install \
+
+RUN echo 'Updating all system packages' >&2 && \
+    dnf upgrade -y && \
+    echo 'Cleaning up installation files' >&2 && \
+    dnf clean all && rm -rf /var/cache/yum /var/cache/dnf /tmp/* /var/tmp/*
+
+RUN echo 'Installing native toolchain and build system functionality' >&2 && \
+    dnf install -y \
         automake \
-        bsdmainutils \
-        build-essential \
+        autoconf \
+        bzip2 \
         ccache \
+        cmake \
         coccinelle \
-        curl \
         cppcheck \
-        doxygen \
-        gcc-multilib \
+        curl \
+        findutils \
+        gcc \
+        gcc-c++ \
         gdb \
-        g++-multilib \
         git \
-        graphviz \
-        libpcre3 \
+        hostname \
+        make \
+        p7zip \
         parallel \
-        pcregrep \
-        python \
+        pcre-tools \
         python3 \
         python3-pexpect \
         python3-crypto \
         python3-pyasn1 \
         python3-ecdsa \
         python3-flake8 \
-        p7zip \
         subversion \
         unzip \
         vim-common \
         wget \
-    && echo 'Installing Cortex-M toolchain' >&2 && \
-    apt-get -y install \
-        gcc-arm-embedded \
-    && echo 'Installing MSP430 toolchain' >&2 && \
-    apt-get -y install \
-        gcc-msp430 \
-    && echo 'Installing AVR toolchain' >&2 && \
-    apt-get -y install \
-        gcc-avr \
-        binutils-avr \
+        which \
+    && \
+    echo 'Installing Doxygen and graphviz' >&2 && \
+    dnf install -y \
+        doxygen \
+        graphviz \
+    && \
+    echo 'Installing Cortex-M toolchain' >&2 && \
+    dnf install -y \
+        arm-none-eabi-binutils \
+        arm-none-eabi-gcc-cs \
+        arm-none-eabi-gcc-cs-c++ \
+        arm-none-eabi-gdb \
+        arm-none-eabi-newlib \
+    && \
+    echo 'Installing AVR toolchain' >&2 && \
+    dnf install -y \
+        avr-gcc \
+        avr-gcc-c++ \
         avr-libc \
-    && echo 'Installing LLVM/Clang toolchain' >&2 && \
-    apt-get -y install \
-        llvm \
+    && \
+    echo 'Installing LLVM/Clang toolchain' >&2 && \
+    dnf install -y \
         clang \
-    && echo 'Installing x86 bare metal emulation' >&2 && \
-    apt-get -y install \
-        qemu-system-x86 \
-    && echo 'Installing socketCAN' >&2 && \
-    apt-get -y install \
-        libsocketcan-dev:i386 \
-        libsocketcan2:i386 \
-    && echo 'Cleaning up installation files' >&2 && \
-    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+        llvm \
+    && \
+    echo 'Installing socketCAN' >&2 && \
+    dnf install -y \
+        can-utils \
+    && \
+    echo 'Cleaning up installation files' >&2 && \
+    dnf clean all && rm -rf /var/cache/yum /var/cache/dnf /tmp/* /var/tmp/*
 
-# Install CMake 3.10
-RUN wget -q https://cmake.org/files/v3.10/cmake-3.10.0.tar.gz -O- \
-    | tar -C /tmp -xz && cd /tmp/cmake-3.10.0/ && ./bootstrap && \
-    make && make install && cd && rm -rf /tmp/cmake-3.10.0
+RUN echo 'Installing MSPGCC old toolchain' >&2 && \
+    mkdir -p /opt && \
+    curl -L 'https://github.com/pksec/msp430-gcc-4.7.3/raw/master/mspgcc-4.7.3.tar.bz2' -o - \
+        | tar -C /opt -jx && \
+    echo 'Removing documentation and translations' >&2 && \
+    rm -rf /opt/mspgcc-*/share/{info,man,locale} && \
+    echo 'Deduplicating binaries' && \
+    pushd /opt/mspgcc-*/msp430/bin && \
+    for f in *; do rm "$f" && ln "../../bin/msp430-$f" "$f"; done && popd
 
 # Install MIPS binary toolchain
-RUN mkdir -p /opt && \
-        wget -q http://codescape-mips-sdk.imgtec.com/components/toolchain/2016.05-03/Codescape.GNU.Tools.Package.2016.05-03.for.MIPS.MTI.Bare.Metal.CentOS-5.x86_64.tar.gz -O- \
-        | tar -C /opt -xz
-
-ENV PATH $PATH:/opt/mips-mti-elf/2016.05-03/bin
-ENV MIPS_ELF_ROOT /opt/mips-mti-elf/2016.05-03
+RUN echo 'Installing mips-mti-elf toolchain from mips.com' >&2 && \
+    mkdir -p /opt && \
+    curl -L 'https://www.mips.com/?do-download=linux-x64-mti-bare-metal-2016-05-06' -o - \
+        | tar -C /opt -zx && \
+    echo 'Removing documentation and translations' >&2 && \
+    rm -rf /opt/mips-mti-elf/*/share/{doc,info,man,locale} && \
+    echo 'Deduplicating binaries' && \
+    pushd /opt/mips-mti-elf/*/mips-mti-elf/bin && \
+    for f in *; do rm "$f" && ln "../../bin/mips-mti-elf-$f" "$f"; done && popd
 
 # Install RISC-V binary toolchain
-RUN mkdir -p /opt && \
-        wget -q https://github.com/gnu-mcu-eclipse/riscv-none-gcc/releases/download/v7.2.0-2-20180110/gnu-mcu-eclipse-riscv-none-gcc-7.2.0-2-20180111-2230-centos64.tgz -O- \
-        | tar -C /opt -xz
+RUN echo 'Installing riscv-none-elf toolchain from GNU MCU Eclipse' >&2 && \
+    mkdir -p /opt && \
+    curl -L 'https://github.com/gnu-mcu-eclipse/riscv-none-gcc/releases/download/v7.2.0-2-20180110/gnu-mcu-eclipse-riscv-none-gcc-7.2.0-2-20180111-2230-centos64.tgz' -o - \
+        | tar -C /opt -zx && \
+    echo 'Removing documentation' >&2 && \
+    rm -rf /opt/gnu-mcu-eclipse/riscv-none-gcc/*/share/doc && \
+    echo 'Deduplicating binaries' && \
+    pushd /opt/gnu-mcu-eclipse/riscv-none-gcc/*/riscv-none-embed/bin && \
+    for f in *; do rm "$f" && ln "../../bin/riscv-none-embed-$f" "$f"; done && popd
 
-# HACK download arch linux' flex dynamic library
-RUN wget -q https://sgp.mirror.pkgbuild.com/core/os/x86_64/flex-2.6.4-1-x86_64.pkg.tar.xz -O- \
-        | tar -C / -xJ usr/lib/libfl.so.2.0.0
-RUN ldconfig
-
-ENV PATH $PATH:/opt/gnu-mcu-eclipse/riscv-none-gcc/7.2.0-2-20180111-2230/bin
-
-# compile suid create_user binary
-COPY create_user.c /tmp/create_user.c
-RUN gcc -DHOMEDIR=\"/data/riotbuild\" -DUSERNAME=\"riotbuild\" /tmp/create_user.c -o /usr/local/bin/create_user \
-    && chown root:root /usr/local/bin/create_user \
-    && chmod u=rws,g=x,o=- /usr/local/bin/create_user \
-    && rm /tmp/create_user.c
+ENV MIPS_ELF_ROOT /opt/mips-mti-elf/2016.05-06
+ENV PATH ${PATH}:/opt/mspgcc-4.7.3/bin:${MIPS_ELF_ROOT}/bin:/opt/gnu-mcu-eclipse/riscv-none-gcc/7.2.0-2-20180111-2230/bin
 
 # Installs the complete ESP8266 toolchain in /opt/esp (146 MB after cleanup) from binaries
 RUN echo 'Adding esp8266 toolchain' >&2 && \
@@ -137,6 +146,13 @@ RUN echo 'Adding esp8266 toolchain' >&2 && \
     rm -rf .git 
 
 ENV PATH $PATH:/opt/esp/esp-open-sdk/xtensa-lx106-elf/bin
+
+# compile suid create_user binary
+COPY create_user.c /tmp/create_user.c
+RUN gcc -DHOMEDIR=\"/data/riotbuild\" -DUSERNAME=\"riotbuild\" /tmp/create_user.c -o /usr/local/bin/create_user \
+    && chown root:root /usr/local/bin/create_user \
+    && chmod u=rws,g=x,o=- /usr/local/bin/create_user \
+    && rm /tmp/create_user.c
 
 # Create working directory for mounting the RIOT sources
 RUN mkdir -m 777 -p /data/riotbuild
