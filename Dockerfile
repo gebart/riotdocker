@@ -6,15 +6,11 @@
 #
 # Setup: (only needed once per Dockerfile change)
 # 1. install docker, add yourself to docker group, enable docker, relogin
-# 2. # docker build -t riotbuild .
+# 2. # docker build -t riot/riotbuild .
 #
 # Suggested usage:
 # 3. cd to RIOT application
 # 4. make BUILD_IN_DOCKER=1
-#
-# Manual usage:
-# 3. cd to RIOT root
-# 4. # docker run -i -t -u $UID -v $(pwd):/data/riotbuild riotbuild ./dist/tools/compile_test/compile_test.py
 
 FROM fedora:latest
 
@@ -29,6 +25,7 @@ MAINTAINER Joakim Nohlgård <joakim.nohlgard@eistec.se>
 # - AVR toolchain
 # - MIPS bare metal toolchain
 # - RISC-V bare metal toolchain
+# - ESP8266 toolchain
 # All RPM files and other package manager files will be deleted afterwards to
 # reduce the size of the container image.
 # This is all done in a single RUN command to reduce the number of layers and to
@@ -40,6 +37,7 @@ RUN echo 'Updating all system packages' >&2 && \
     dnf clean all && rm -rf /var/cache/yum /var/cache/dnf /tmp/* /var/tmp/*
 
 RUN echo 'Installing native toolchain and build system functionality' >&2 && \
+    dnf clean all && dnf update && \
     dnf install -y \
         automake \
         autoconf \
@@ -115,7 +113,7 @@ RUN echo 'Installing MSPGCC old toolchain' >&2 && \
 # Install MIPS binary toolchain
 RUN echo 'Installing mips-mti-elf toolchain from mips.com' >&2 && \
     mkdir -p /opt && \
-    curl -L 'https://www.mips.com/?do-download=linux-x64-mti-bare-metal-2016-05-06' -o - \
+    curl -L 'https://codescape.mips.com/components/toolchain/2017.10-08/Codescape.GNU.Tools.Package.2017.10-08.for.MIPS.MTI.Bare.Metal.CentOS-5.x86_64.tar.gz' -o - \
         | tar -C /opt -zx && \
     echo 'Removing documentation and translations' >&2 && \
     rm -rf /opt/mips-mti-elf/*/share/{doc,info,man,locale} && \
@@ -126,7 +124,7 @@ RUN echo 'Installing mips-mti-elf toolchain from mips.com' >&2 && \
 # Install RISC-V binary toolchain
 RUN echo 'Installing riscv-none-elf toolchain from GNU MCU Eclipse' >&2 && \
     mkdir -p /opt && \
-    curl -L 'https://github.com/gnu-mcu-eclipse/riscv-none-gcc/releases/download/v7.2.0-2-20180110/gnu-mcu-eclipse-riscv-none-gcc-7.2.0-2-20180111-2230-centos64.tgz' -o - \
+    curl -L 'https://github.com/gnu-mcu-eclipse/riscv-none-gcc/releases/download/v7.2.0-4-20180606/gnu-mcu-eclipse-riscv-none-gcc-7.2.0-4-20180606-1631-centos64.tgz' -o - \
         | tar -C /opt -zx && \
     echo 'Removing documentation' >&2 && \
     rm -rf /opt/gnu-mcu-eclipse/riscv-none-gcc/*/share/doc && \
@@ -134,16 +132,16 @@ RUN echo 'Installing riscv-none-elf toolchain from GNU MCU Eclipse' >&2 && \
     pushd /opt/gnu-mcu-eclipse/riscv-none-gcc/*/riscv-none-embed/bin && \
     for f in *; do rm "$f" && ln "../../bin/riscv-none-embed-$f" "$f"; done && popd
 
-ENV MIPS_ELF_ROOT /opt/mips-mti-elf/2016.05-06
-ENV PATH ${PATH}:/opt/mspgcc-4.7.3/bin:${MIPS_ELF_ROOT}/bin:/opt/gnu-mcu-eclipse/riscv-none-gcc/7.2.0-2-20180111-2230/bin
+ENV MIPS_ELF_ROOT /opt/mips-mti-elf/2017.10-08
+ENV PATH ${PATH}:/opt/mspgcc-4.7.3/bin:${MIPS_ELF_ROOT}/bin:/opt/gnu-mcu-eclipse/riscv-none-gcc/7.2.0-4-20180606-1631/bin
 
 # Installs the complete ESP8266 toolchain in /opt/esp (146 MB after cleanup) from binaries
 RUN echo 'Adding esp8266 toolchain' >&2 && \
     cd /opt && \
     git clone https://github.com/gschorcht/RIOT-Xtensa-ESP8266-toolchain.git esp && \
     cd esp && \
-    git checkout -q df38b06 && \
-    rm -rf .git 
+    git checkout -q df38b06f3fef6a439100e19e278405675cb66515 && \
+    rm -rf .git
 
 ENV PATH $PATH:/opt/esp/esp-open-sdk/xtensa-lx106-elf/bin
 
