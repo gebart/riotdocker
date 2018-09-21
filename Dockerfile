@@ -101,13 +101,18 @@ RUN wget -q https://cmake.org/files/v3.10/cmake-3.10.0.tar.gz -O- \
     | tar -C /tmp -xz && cd /tmp/cmake-3.10.0/ && ./bootstrap && \
     make && make install && cd && rm -rf /tmp/cmake-3.10.0
 
-# Install MIPS binary toolchain
-RUN mkdir -p /opt && \
-        wget -q http://codescape-mips-sdk.imgtec.com/components/toolchain/2016.05-03/Codescape.GNU.Tools.Package.2016.05-03.for.MIPS.MTI.Bare.Metal.CentOS-5.x86_64.tar.gz -O- \
-        | tar -C /opt -xz
+RUN echo 'Installing mips-mti-elf toolchain from mips.com' >&2 && \
+    mkdir -p /opt && \
+    curl -L 'https://codescape.mips.com/components/toolchain/2017.10-08/Codescape.GNU.Tools.Package.2017.10-08.for.MIPS.MTI.Bare.Metal.CentOS-5.x86_64.tar.gz' -o - \
+        | tar -C /opt -zx && \
+    echo 'Removing documentation and translations' >&2 && \
+    rm -rf /opt/mips-mti-elf/*/share/{doc,info,man,locale} && \
+    echo 'Deduplicating binaries' && \
+    cd /opt/mips-mti-elf/*/mips-mti-elf/bin && \
+    for f in *; do rm "$f" && ln "../../bin/mips-mti-elf-$f" "$f"; done && cd -
 
-ENV PATH $PATH:/opt/mips-mti-elf/2016.05-03/bin
-ENV MIPS_ELF_ROOT /opt/mips-mti-elf/2016.05-03
+ENV MIPS_ELF_ROOT /opt/mips-mti-elf/2017.10-08
+ENV PATH ${PATH}:${MIPS_ELF_ROOT}/bin
 
 # Install RISC-V binary toolchain
 RUN mkdir -p /opt && \
