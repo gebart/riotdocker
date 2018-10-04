@@ -65,9 +65,6 @@ RUN \
         unzip \
         vim-common \
         wget \
-    && echo 'Installing MSP430 toolchain' >&2 && \
-    apt-get -y install \
-        gcc-msp430 \
     && echo 'Installing AVR toolchain' >&2 && \
     apt-get -y install \
         gcc-avr \
@@ -95,6 +92,19 @@ RUN echo 'Installing arm-none-eabi toolchain from arm.com' >&2 && \
     # No need to dedup, the ARM toolchain is already using hard links for the duplicated files
 
 ENV PATH ${PATH}:/opt/gcc-arm-none-eabi-7-2018-q2-update/bin
+
+# Install MSPGCC 4.7.3 old toolchain
+RUN echo 'Installing MSPGCC old toolchain' >&2 && \
+    mkdir -p /opt && \
+    curl -L 'https://github.com/pksec/msp430-gcc-4.7.3/raw/4f329d795c23984609f5daacf1a3fd5bdb0c5375/mspgcc-4.7.3.tar.bz2' -o - \
+        | tar -C /opt -jx && \
+    echo 'Removing documentation and translations' >&2 && \
+    rm -rf /opt/mspgcc-*/share/{info,man,locale} && \
+    echo 'Deduplicating binaries' && \
+    cd /opt/mspgcc-*/msp430/bin && \
+    for f in *; do rm "$f" && ln "../../bin/msp430-$f" "$f"; done && cd -
+
+ENV PATH ${PATH}:/opt/mspgcc-4.7.3/bin
 
 # Install CMake 3.10
 RUN wget -q https://cmake.org/files/v3.10/cmake-3.10.0.tar.gz -O- \
