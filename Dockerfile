@@ -85,7 +85,7 @@ RUN \
 # For updates, see https://developer.arm.com/open-source/gnu-toolchain/gnu-rm/downloads
 RUN echo 'Installing arm-none-eabi toolchain from arm.com' >&2 && \
     mkdir -p /opt && \
-    curl -L 'https://developer.arm.com/-/media/Files/downloads/gnu-rm/7-2018q2/gcc-arm-none-eabi-7-2018-q2-update-linux.tar.bz2?revision=bc2c96c0-14b5-4bb4-9f18-bceb4050fee7?product=GNU%20Arm%20Embedded%20Toolchain,64-bit,,Linux,7-2018-q2-update' -o - \
+    curl -s -S -L 'https://developer.arm.com/-/media/Files/downloads/gnu-rm/7-2018q2/gcc-arm-none-eabi-7-2018-q2-update-linux.tar.bz2?revision=bc2c96c0-14b5-4bb4-9f18-bceb4050fee7?product=GNU%20Arm%20Embedded%20Toolchain,64-bit,,Linux,7-2018-q2-update' -o - \
         | tar -C /opt -jx && \
     echo 'Removing documentation' >&2 && \
     rm -rf /opt/gcc-arm-none-eabi-*/share/doc
@@ -96,7 +96,7 @@ ENV PATH ${PATH}:/opt/gcc-arm-none-eabi-7-2018-q2-update/bin
 # Install MSPGCC 4.7.3 old toolchain
 RUN echo 'Installing MSPGCC old toolchain' >&2 && \
     mkdir -p /opt && \
-    curl -L 'https://github.com/pksec/msp430-gcc-4.7.3/raw/4f329d795c23984609f5daacf1a3fd5bdb0c5375/mspgcc-4.7.3.tar.bz2' -o - \
+    curl -s -S -L 'https://github.com/pksec/msp430-gcc-4.7.3/raw/4f329d795c23984609f5daacf1a3fd5bdb0c5375/mspgcc-4.7.3.tar.bz2' -o - \
         | tar -C /opt -jx && \
     echo 'Removing documentation and translations' >&2 && \
     rm -rf /opt/mspgcc-*/share/{info,man,locale} && \
@@ -113,7 +113,7 @@ RUN wget -q https://cmake.org/files/v3.10/cmake-3.10.0.tar.gz -O- \
 
 # Install MIPS binary toolchain
 RUN mkdir -p /opt && \
-        wget -q https://codescape.mips.com/components/toolchain/2016.05-03/Codescape.GNU.Tools.Package.2016.05-03.for.MIPS.MTI.Bare.Metal.CentOS-5.x86_64.tar.gz -O- \
+    curl -s -S -L https://codescape.mips.com/components/toolchain/2016.05-03/Codescape.GNU.Tools.Package.2016.05-03.for.MIPS.MTI.Bare.Metal.CentOS-5.x86_64.tar.gz -o - \
         | tar -C /opt -xz && \
     echo 'Removing documentation and translations' >&2 && \
     rm -rf /opt/mips-mti-elf/*/share/{doc,info,man,locale} && \
@@ -126,7 +126,7 @@ ENV PATH ${PATH}:${MIPS_ELF_ROOT}/bin
 
 # Install RISC-V binary toolchain
 RUN mkdir -p /opt && \
-        wget -q https://github.com/gnu-mcu-eclipse/riscv-none-gcc/releases/download/v7.2.0-2-20180110/gnu-mcu-eclipse-riscv-none-gcc-7.2.0-2-20180111-2230-centos64.tgz -O- \
+    curl -s -S -L https://github.com/gnu-mcu-eclipse/riscv-none-gcc/releases/download/v7.2.0-2-20180110/gnu-mcu-eclipse-riscv-none-gcc-7.2.0-2-20180111-2230-centos64.tgz -o - \
         | tar -C /opt -xz && \
     echo 'Removing documentation' >&2 && \
     rm -rf /opt/gnu-mcu-eclipse/riscv-none-gcc/*/share/doc && \
